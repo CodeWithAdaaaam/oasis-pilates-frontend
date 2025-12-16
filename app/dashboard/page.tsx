@@ -8,12 +8,6 @@ import api from "@/services/api";
 import { Reservation, Subscription, User } from "@/types";
 
 // Le type Reservation dans types/index.ts doit maintenant avoir 'schedule'
-interface ReservationWithSchedule extends Reservation {
-  reservationDate: string | number | Date;
-  schedule: {
-    title: string;
-  };
-}
 interface UserProfile extends User {
   subscriptions: Subscription[];
 }
@@ -22,7 +16,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [nextReservation, setNextReservation] = useState<ReservationWithSchedule | null>(null);
+  const [nextReservation, setNextReservation] = useState<Reservation | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
