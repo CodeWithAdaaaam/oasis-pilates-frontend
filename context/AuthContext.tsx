@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // 1. IMPORTER usePathname
 import { User } from '@/types';
 import api from '@/services/api';
 
@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname(); // 2. OBTENIR LE CHEMIN ACTUEL
 
   // Vérifier si un token existe au chargement de l'app
   useEffect(() => {
@@ -31,18 +32,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     };
-    verifyUser();
-  }, []);
 
-  // Fonction de connexion centralisée
+    if (pathname === '/login' || pathname === '/register') {
+        setLoading(false); 
+    } else {
+        verifyUser(); // Sinon, on lance la vérification
+    }
+
+  }, [pathname]); // On met 'pathname' comme dépendance
+
+  // La fonction 'login' est parfaite, on ne change rien
   const login = async (credentials: {email: string, password: string}) => {
     try {
       const response = await api.post<{ user: User }>('/auth/login', credentials);
       const userData = response.data.user;
-      
-      setUser(userData); // Met à jour le state
-
-      // Redirection après succès
+      setUser(userData);
       if (userData.role === 'ADMIN' || userData.role === 'RECEPTIONIST') {
         router.push('/admin');
       } else {
@@ -50,10 +54,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Erreur de login dans le contexte", error);
-      throw error; // Renvoie l'erreur pour que le formulaire puisse l'afficher
+      throw error;
     }
   };
 
+  // La fonction 'logout' est parfaite, on ne change rien
   const logout = async () => {
     try {
       await api.post('/auth/logout');
@@ -66,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {!loading && children} {/* Optionnel : n'affiche rien tant que le user n'est pas vérifié */}
+      {children}
     </AuthContext.Provider>
   );
 };
