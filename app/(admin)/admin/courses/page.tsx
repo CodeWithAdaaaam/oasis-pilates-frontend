@@ -19,7 +19,13 @@ export default function AdminPlanningPage() {
     const [isCreateModalVisible, setCreateModalVisible] = useState(false);
     const [sessionToView, setSessionToView] = useState<SelectedSession | null>(null);
 
-    const [formData, setFormData] = useState({ title: '', dayOfWeek: '1', startTime: '18:00', duration: 60, coachName: '', capacity: 5 });
+    const [formData, setFormData] = useState({ id: null as number | null, // <--- AJOUT DE CETTE LIGNE
+    title: '',
+    dayOfWeek: '1',
+    startTime: '18:00',
+    duration: 60,
+    coachName: '',
+    capacity: 5});
 
     const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(new Date(), i)), []);
 
