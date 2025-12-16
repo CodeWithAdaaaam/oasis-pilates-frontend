@@ -8,7 +8,7 @@ import { User } from "@/types";
 import { LogOut } from 'lucide-react';
 
 export default function ProfilePage() {
-   const { user, setUser, logout } = useAuth();
+  const { user,  logout } = useAuth();
   const [formData, setFormData] = useState({ nom: '', prenom: '', telephone: '' });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,15 +38,9 @@ export default function ProfilePage() {
     setIsLoading(true);
 
     try {
-      // On envoie seulement nom, prenom, telephone
-      const response = await api.put<User>('/users/me', formData);
-      const updatedUser = response.data;
-
-      // Mettre à jour le contexte et le localStorage
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      toast.success("Profil mis à jour avec succès !");
+      await api.put<User>('/users/me', formData);
+      toast.success("Profil mis à jour !");
+      window.location.reload(); 
 
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Une erreur est survenue.");
