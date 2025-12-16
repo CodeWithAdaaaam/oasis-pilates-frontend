@@ -84,7 +84,9 @@ export default function Dashboard() {
                   <>
                     <p className="text-sm text-sage/80 font-bold">{subscription.type.replace('_', ' ')}</p>
                     <p className="text-2xl font-bold text-green-600 my-2">{subscription.sessionsLeft} <span className="text-sm font-normal text-sage/60">séances</span></p>
-                    <p className="text-xs text-sage/50">Expire le: {new Date(subscription.endDate).toLocaleDateString('fr-FR')}</p>
+                    {subscription.endDate && (
+                        <p className="text-xs text-sage/50">Expire le: {new Date(subscription.endDate).toLocaleDateString('fr-FR')}</p>
+                    )}
                   </>
                 )}
                 {subscription.status === 'PENDING' && (
