@@ -58,7 +58,7 @@ export default function Footer() {
           <p className="text-xs leading-5 text-cream/60 flex items-center gap-1">
             Créé avec <span className="text-red-300 text-xs">♥</span> par 
             <a 
-              href="https://ton-portfolio.com" 
+              href="https://codewithadaaaam.github.io/portfolio/" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="font-bold text-cream hover:text-white hover:underline transition-all"
