@@ -26,7 +26,7 @@ export default function Dashboard() {
           // Les appels API ne changent pas
           const [userProfileResponse, reservationsResponse] = await Promise.all([
             api.get<UserProfile>('/users/me'),
-            api.get<ReservationWithSchedule[]>('/reservations/me') // On s'attend à recevoir schedule
+            api.get<Reservation[]>('/reservations/me') // On s'attend à recevoir schedule
           ]);
 
           const allSubs = userProfileResponse.data.subscriptions;
