@@ -55,7 +55,7 @@ export default function AdminPlanningPage() {
     };
 
     const openCreateModal = () => {
-        setFormData({ title: '', dayOfWeek: '1', startTime: '18:00', duration: 60, coachName: '', capacity: 5 });
+        setFormData({id: null, title: '', dayOfWeek: '1', startTime: '18:00', duration: 60, coachName: '', capacity: 5});
         setCreateModalVisible(true);
     };
 
