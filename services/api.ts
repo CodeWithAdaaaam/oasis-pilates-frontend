@@ -3,8 +3,8 @@ import axios from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
-  baseURL: API_URL,
-  withCredentials: true, // C'est la seule chose importante à garder pour les cookies
+  baseURL: '/api-backend', 
+  withCredentials: true, 
 });
 
 // --- ON A SUPPRIMÉ TOUTE LA LOGIQUE CSRF (fetchCsrfToken et l'intercepteur) ---
