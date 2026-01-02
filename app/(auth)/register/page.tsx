@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AxiosError } from 'axios';
 
 // --- CHANGEMENTS IMPORTATIONS ---
 import api from '@/services/api';
@@ -26,9 +27,9 @@ export default function RegisterPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+        e.preventDefault();
+        setIsLoading(true);
+        setError('');
 
     if (formData.password !== formData.confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
@@ -37,7 +38,6 @@ export default function RegisterPage() {
     }
 
     try {
-      // --- CHANGEMENT LOGIQUE : On mappe les noms pour correspondre au backend ---
       const payload = {
         prenom: formData.firstname,
         nom: formData.lastname,
@@ -46,16 +46,19 @@ export default function RegisterPage() {
         password: formData.password,
       };
 
-      // On appelle notre nouvelle API avec le bon format de données
       await api.post('/auth/register', payload);
       
-      // On utilise toast pour une meilleure expérience utilisateur
-      toast.success("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
+      toast.success("Compte créé ! Vous pouvez maintenant vous connecter.");
       router.push('/login');
 
-    } catch (err: any) {
-      // On affiche l'erreur spécifique du backend
-      setError(err.response?.data?.error || "Une erreur est survenue.");
+    } catch (err) {
+      if (err instanceof AxiosError && err.response) {
+            // Maintenant, TypeScript sait que err.response existe et a une propriété 'data'
+            setError(err.response.data.message || "Une erreur est survenue.");
+        } else {
+            // Pour les erreurs qui ne sont pas des erreurs Axios (ex: problème réseau)
+            setError("Impossible de contacter le serveur. Veuillez vérifier votre connexion.");
+        }
     } finally {
       setIsLoading(false);
     }
