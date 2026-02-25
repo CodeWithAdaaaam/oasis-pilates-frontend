@@ -8,6 +8,7 @@ export interface User {
   telephone?: string;
   role: 'CLIENT' | 'ADMIN' | 'RECEPTIONIST';
   status?: 'ACTIVE' | 'INACTIVE';
+  photoUrl?: string;
   dateInscription: string;
   subscriptions?: Subscription[];
   reservations?: Reservation[];
@@ -51,9 +52,9 @@ export interface Schedule {
 export interface Reservation {
   id: number;
   status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  reservationDate: string; 
-  schedule: Schedule; 
-  user?: { 
+  reservationDate: string;
+  schedule: Schedule;
+  user?: {
     nom: string;
     prenom: string;
   };

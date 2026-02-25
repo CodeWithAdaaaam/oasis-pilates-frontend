@@ -57,7 +57,7 @@ export default function TreasuryPage() {
 
       {/* Cartes Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow border-l-4 border-oasis-green">
+        <div className="bg-white p-6 rounded-xl shadow border-l-4 border-sage">
             <p className="text-gray-500 text-sm uppercase">Solde Disponible (Caisse + Banque)</p>
             <p className="text-3xl font-bold text-gray-800">{stats.totalBalance.toFixed(2)} DH</p>
         </div>

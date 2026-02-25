@@ -1,64 +1,89 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; // 1. IMPORTER usePathname
+import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@/types';
 import api from '@/services/api';
+import HealthProfileModal from '@/components/HealthProfileModal'; // Assurez-vous que le chemin est correct
+
+// On étend le type User pour qu'il puisse contenir les données de la fiche santé
+interface UserWithHealthProfile extends User {
+  healthProfile?: any;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: UserWithHealthProfile | null;
   loading: boolean;
   login: (credentials: any) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserWithHealthProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isHealthModalForcedOpen, setHealthModalForcedOpen] = useState(false);
   const router = useRouter();
-  const pathname = usePathname(); // 2. OBTENIR LE CHEMIN ACTUEL
+  const pathname = usePathname();
 
-  // Vérifier si un token existe au chargement de l'app
-  useEffect(() => {
-    const verifyUser = async () => {
-      try {
-        const response = await api.get<User>('/users/me');
-        setUser(response.data);
-      } catch (error) {
-        setUser(null);
-      } finally {
-        setLoading(false);
+  // Fonction pour vérifier l'utilisateur connecté (réutilisable)
+  const verifyUser = async () => {
+    try {
+      // Le backend doit renvoyer l'utilisateur AVEC son healthProfile
+      const response = await api.get<UserWithHealthProfile>(`/users/me?_t=${new Date().getTime()}`);
+      const userData = response.data;
+      setUser(userData);
+      
+      // Si c'est un client et qu'il n'a pas de profil santé, on force l'ouverture du modal
+      if (userData && userData.role === 'CLIENT' && !userData.healthProfile) {
+        setHealthModalForcedOpen(true);
       }
-    };
-
-    if (pathname === '/login' || pathname === '/register') {
-        setLoading(false); 
-    } else {
-        verifyUser(); // Sinon, on lance la vérification
+      
+    } catch (error) {
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
+  };
+  
+  // Effet pour vérifier l'utilisateur au premier chargement
+  useEffect(() => {
+    if (pathname === '/login' || pathname === '/register') {
+        setLoading(false);
+        return;
+    }
+    verifyUser();
+  }, [pathname]);
 
-  }, [pathname]); // On met 'pathname' comme dépendance
-
-  // La fonction 'login' est parfaite, on ne change rien
+  // Fonction de connexion
   const login = async (credentials: {email: string, password: string}) => {
     try {
-      const response = await api.post<{ user: User }>('/auth/login', credentials);
+      const response = await api.post<{ user: UserWithHealthProfile }>('/auth/login', credentials);
       const userData = response.data.user;
       setUser(userData);
+      
+      // LOGIQUE DE REDIRECTION PAR RÔLE
       if (userData.role === 'ADMIN' || userData.role === 'RECEPTIONIST') {
         router.push('/admin');
-      } else {
-        router.push('/dashboard');
+      } 
+      else if (userData.role === 'COACH') {
+        router.push('/dashboard/coach'); // ✅ On envoie le coach sur son planning
+      } 
+      else {
+        router.push('/dashboard'); // Client
+        if (!userData.healthProfile) {
+            setHealthModalForcedOpen(true);
+        }
       }
     } catch (error) {
-      console.error("Erreur de login dans le contexte", error);
+      console.error("Erreur de login", error);
       throw error;
     }
   };
 
-  // La fonction 'logout' est parfaite, on ne change rien
+  // Fonction de déconnexion
   const logout = async () => {
     try {
       await api.post('/auth/logout');
@@ -69,9 +94,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Fonction pour rafraîchir l'utilisateur (appelée par le modal)
+  const refreshUser = () => {
+    setHealthModalForcedOpen(false); // On ferme d'abord le modal forcé
+    verifyUser(); // Puis on recharge les données
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+      {/* Le modal s'affiche par-dessus tout si son état 'isOpen' est true */}
+      <HealthProfileModal 
+        isOpen={isHealthModalForcedOpen} 
+        onClose={() => setHealthModalForcedOpen(false)} // Permet au 'X' de fonctionner
+      />
+      
+      {/* On n'affiche le reste du site que si le chargement initial est terminé */}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

@@ -83,12 +83,15 @@ export default function ManageTeamPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {coaches.map(coach => (
           <div key={coach.id} className="bg-white rounded-xl shadow-md p-6 text-center flex flex-col">
-            <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden mb-4 border-4 border-sage/10">
+            <div className="relative w-32 h-32 mx-auto rounded-[2.5rem] overflow-hidden mb-6 border-4 border-white shadow-lg group-hover:scale-105 transition-transform bg-gray-100">
               <Image 
-                src={getImageUrl(coach.photoUrl)} 
+                // ✅ On passe le nom complet pour avoir les bonnes initiales en cas d'erreur
+                src={getImageUrl(coach.coachProfile?.photoUrl, `${coach.prenom} ${coach.nom}`)} 
                 alt={`${coach.prenom} ${coach.nom}`}
-                layout="fill"
-                objectFit="cover"
+                fill
+                sizes="128px"
+                className="object-cover"
+                unoptimized={true} // ✅ Désactive l'optimisation Next pour le Base64 (plus rapide)
               />
             </div>
             <h3 className="text-xl font-bold text-sage">{coach.prenom} {coach.nom}</h3>

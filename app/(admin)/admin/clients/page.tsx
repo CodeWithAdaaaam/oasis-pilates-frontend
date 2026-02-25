@@ -1,320 +1,269 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import api from '@/services/api';
-import ClientDetailModal from '@/app/(admin)/components/ClientDetailModal';
-// Vous pouvez utiliser Lucide ou garder vos classes material-symbols. Ici j'utilise Lucide pour la cohérence.
-import { Plus, Search, UserPlus, Download, Eye } from 'lucide-react';
+import { UserPlus, Search, Download, CircleUserRound, Calendar, XCircle, Loader2, CreditCard, Mail, Phone, User as UserIcon } from 'lucide-react';
+import { User, Subscription } from '@/types';
+import toast from 'react-hot-toast';
+import { format, parseISO } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
-// Types
-interface Client {
-  id: number;
-  nom: string;
-  prenom: string;
-  email: string;
-  telephone: string;
-  subscriptions?: any[];
-  dateInscription: string;
-}
+// Import du composant Modal réutilisable
+import BuyPackModal from '@/components/admin/BuyPackModal';
 
-interface PackConfig {
-  code: string;
-  name: string;
-  price: number;
-  isActive: boolean;
+// --- TYPES LOCAUX ---
+interface Client extends User {
+  subscriptions?: Subscription[];
 }
 
 export default function AdminClientsPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
-  const [packs, setPacks] = useState<PackConfig[]>([]); // Liste des packs dynamique
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Modals
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  // États des Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [buyModalClient, setBuyModalClient] = useState<{ id: number, name: string } | null>(null);
 
-  // Formulaire Nouveau Client
+  // État simplifié pour la création : Uniquement les infos de base
   const [newClient, setNewClient] = useState({
-    nom: '', prenom: '', email: '', telephone: '',
-    packType: '', 
-    amountPaid: '', 
-    paymentMethod: 'CASH',
-    paymentRef: '',
-    startDate: new Date().toISOString().slice(0, 10) // Aujourd'hui par défaut
+    nom: '',
+    prenom: '',
+    email: '',
+    telephone: ''
   });
-
-  // 1. Chargement Initial
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Récupérer les clients
-      const resClients = await api.get('/admin/clients'); // ou /admin/clients/list selon votre route
+      const resClients = await api.get('/admin/clients');
       setClients(resClients.data);
-
-      // Récupérer les packs (POUR LE MENU DÉROULANT)
-      const resPacks = await api.get('/admin/packs');
-      // On ne garde que les packs actifs pour la vente
-      const activePacks = resPacks.data.filter((p: any) => p.isActive);
-      setPacks(activePacks);
-
-      // Pré-sélection du premier pack
-      if (activePacks.length > 0) {
-        setNewClient(prev => ({ ...prev, packType: activePacks[0].code }));
-      }
     } catch (error) {
-      console.error("Erreur chargement:", error);
+      toast.error("Impossible de charger les membres.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 2. Gestion Création Client
-  const handleCreate = async (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // --- CRÉATION DU COMPTE ET REDIRECTION ---
+  const handleCreateAccount = async (e: FormEvent) => {
     e.preventDefault();
+    const toastId = toast.loading("Création du compte client...");
+
     try {
-      await api.post('/admin/clients', newClient);
+      // On envoie uniquement les infos d'identité
+      const res = await api.post('/admin/clients', newClient);
+      const createdUser = res.data;
+
       setIsCreateModalOpen(false);
-      // Reset du formulaire
-      setNewClient({ 
-        nom: '', prenom: '', email: '', telephone: '', 
-        packType: packs[0]?.code || '', 
-        amountPaid: '', 
-        paymentMethod: 'CASH', 
-        paymentRef: '',
-        startDate: new Date().toISOString().slice(0, 10)
-      });
-      fetchData(); // Rafraîchir la liste
-      alert("Client créé avec succès !");
+      setNewClient({ nom: '', prenom: '', email: '', telephone: '' });
+
+      toast.success("Compte créé avec succès ! Redirection...", { id: toastId });
+
+      // ✅ REDIRECTION AUTOMATIQUE vers la page du client pour acheter le pack
+      router.push(`/admin/clients/${createdUser.id}`);
+
     } catch (err: any) {
-      alert(err.response?.data?.message || "Erreur lors de la création");
+      toast.error(err.response?.data?.message || "La création a échoué.", { id: toastId });
     }
   };
 
-  // 3. Gestion Export Excel
   const handleExport = async () => {
+    const toastId = toast.loading("Génération de l'export Excel...");
     try {
       const response = await api.get('/admin/export/clients', { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = document.body.appendChild(document.createElement('a'));
       link.href = url;
-      link.setAttribute('download', `clients_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      document.body.appendChild(link);
+      link.setAttribute('download', `export_clients_${new Date().toISOString().slice(0, 10)}.xlsx`);
       link.click();
-      link.parentNode?.removeChild(link);
-    } catch (error) { alert("L'export a échoué."); }
+      link.remove();
+      toast.success("Export terminé !", { id: toastId });
+    } catch (error) {
+      toast.error("L'export a échoué.", { id: toastId });
+    }
   };
 
-  // 4. Gestion Vue Détail
-  const openDetail = (id: number) => {
-    setSelectedClientId(id);
-    setIsDetailModalOpen(true);
-  };
-
-  // Filtrage
   const filteredClients = clients.filter(c =>
-    `${c.nom} ${c.prenom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    `${c.prenom} ${c.nom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) return <div className="p-8 text-center">Chargement...</div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-screen text-sage">
+      <Loader2 className="animate-spin mb-4" size={40} />
+      <p className="font-bold uppercase tracking-widest text-[10px]">Chargement de la base clients...</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="p-4 md:p-8 space-y-8 animate-fade-in pb-24">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
-          <h1 className="font-serif text-3xl font-bold text-sage">Gestion des Clients</h1>
-          <p className="text-sage/60">Gérez vos membres et leurs abonnements</p>
+          <h1 className="font-serif text-3xl font-bold text-sage leading-tight">Gestion des Clients</h1>
+          <p className="text-gray-500 text-sm">Créez un compte ou gérez les abonnements existants.</p>
         </div>
         <div className="flex gap-3">
-            <button onClick={handleExport} className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                <Download size={18} /> Export Excel
-            </button>
-            <button onClick={() => setIsCreateModalOpen(true)} className="bg-sage text-white px-4 py-2 rounded-lg hover:bg-sage/90 flex items-center gap-2 font-bold shadow-md">
-                <UserPlus size={18} /> Nouveau Client
-            </button>
+          <button onClick={handleExport} className="bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl hover:bg-gray-50 flex items-center gap-2 font-bold shadow-sm transition-all text-xs uppercase tracking-wider">
+            <Download size={16} /> Export
+          </button>
+          <button onClick={() => setIsCreateModalOpen(true)} className="bg-sage text-white px-6 py-2.5 rounded-xl hover:bg-sage/90 flex items-center gap-2 font-bold shadow-lg transition-all active:scale-95 text-xs uppercase tracking-wider">
+            <UserPlus size={16} /> Nouveau Client
+          </button>
         </div>
       </div>
 
-      {/* Recherche */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 max-w-md">
-        <Search className="text-gray-400" size={20} />
-        <input 
-          type="text" 
-          placeholder="Rechercher (Nom, Email)..." 
-          className="flex-1 outline-none text-sage"
+      <div className="relative max-w-md">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+        <input
+          type="text"
+          placeholder="Rechercher un membre..."
+          className="w-full p-4 pl-12 border-2 border-gray-100 rounded-2xl outline-none focus:border-sage transition-all shadow-sm font-medium"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      {/* Tableau */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
-            <tr>
-              <th className="p-4">Client</th>
-              <th className="p-4">Contact</th>
-              <th className="p-4">Dernier Pack</th>
-              <th className="p-4 text-center">Séances</th>
-              <th className="p-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y text-sm">
-            {filteredClients.map(client => {
-              const activeSub = client.subscriptions?.[0]; // Le plus récent grâce au backend
-              return (
-                <tr key={client.id} className="hover:bg-gray-50">
-                  <td className="p-4">
-                    <p className="font-bold text-gray-800">{client.prenom} {client.nom}</p>
-                    <p className="text-xs text-gray-400">Inscrit le {new Date(client.dateInscription).toLocaleDateString()}</p>
-                  </td>
-                  <td className="p-4 text-gray-600">
-                    <p>{client.email}</p>
-                    <p className="text-xs">{client.telephone}</p>
-                  </td>
-                  <td className="p-4">
-                    {activeSub ? (
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${activeSub.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                        {activeSub.type.replace('_', ' ')}
-                      </span>
-                    ) : <span className="text-gray-400 italic">Aucun</span>}
-                  </td>
-                  <td className="p-4 text-center font-bold">
-                    {activeSub ? activeSub.sessionsLeft : '-'}
-                  </td>
-                  <td className="p-4 text-right">
-                    <button onClick={() => openDetail(client.id)} className="text-blue-600 hover:bg-blue-50 p-2 rounded">
-                      <Eye size={20} />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {filteredClients.map(client => (
+          <ClientCard
+            key={client.id}
+            client={client}
+            onClick={() => router.push(`/admin/clients/${client.id}`)}
+            onQuickSell={(e) => {
+              e.stopPropagation();
+              setBuyModalClient({ id: client.id, name: `${client.prenom} ${client.nom}` });
+            }}
+          />
+        ))}
       </div>
 
-      {/* --- MODAL CRÉATION CLIENT (Avec Packs Dynamiques) --- */}
+      {/* MODAL VENTE RAPIDE (Pour les clients existants) */}
+      {buyModalClient && (
+        <BuyPackModal
+          clientId={buyModalClient.id}
+          clientName={buyModalClient.name}
+          onClose={() => setBuyModalClient(null)}
+          onSuccess={fetchData}
+        />
+      )}
+
+      {/* --- MODAL CRÉATION DE COMPTE (SIMPLIFIÉ) --- */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4 font-serif text-sage">Inscrire un nouveau client</h2>
-            
-            <form onSubmit={handleCreate} className="space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl relative animate-scale-in overflow-hidden">
+
+            <div className="bg-sage/10 p-8 border-b border-sage/5">
+              <h2 className="text-2xl font-bold font-serif text-sage">Nouveau Compte</h2>
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Étape 1 : Identité du membre</p>
+            </div>
+
+            <form onSubmit={handleCreateAccount} className="p-8 space-y-5">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Prénom</label>
-                  <input required className="w-full border p-2 rounded" value={newClient.prenom} onChange={e => setNewClient({...newClient, prenom: e.target.value})} />
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Prénom</label>
+                  <input required placeholder="ex: Sofia" className="w-full border-2 border-gray-50 p-3 rounded-xl outline-none focus:border-sage transition-all text-sm font-bold" value={newClient.prenom} onChange={e => setNewClient({ ...newClient, prenom: e.target.value })} />
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Nom</label>
-                  <input required className="w-full border p-2 rounded" value={newClient.nom} onChange={e => setNewClient({...newClient, nom: e.target.value})} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                  <input required type="email" className="w-full border p-2 rounded" value={newClient.email} onChange={e => setNewClient({...newClient, email: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Téléphone</label>
-                  <input required className="w-full border p-2 rounded" value={newClient.telephone} onChange={e => setNewClient({...newClient, telephone: e.target.value})} />
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Nom</label>
+                  <input required placeholder="ex: Alami" className="w-full border-2 border-gray-50 p-3 rounded-xl outline-none focus:border-sage transition-all text-sm font-bold" value={newClient.nom} onChange={e => setNewClient({ ...newClient, nom: e.target.value })} />
                 </div>
               </div>
 
-              <hr className="my-4" />
-              
-              <div className="space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                <h3 className="font-bold text-sage">Abonnement & Paiement</h3>
-                
-                {/* LISTE DÉROULANTE DES PACKS DYNAMIQUES */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Choisir un Pack</label>
-                        <select 
-                            className="w-full border p-2 rounded bg-white mt-1"
-                            value={newClient.packType}
-                            onChange={e => setNewClient({...newClient, packType: e.target.value})}
-                        >
-                            {packs.map(pack => (
-                            <option key={pack.code} value={pack.code}>
-                                {pack.name} ({pack.price} DH)
-                            </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Date de début</label>
-                        <input 
-                            type="date" 
-                            className="w-full border p-2 rounded mt-1"
-                            value={newClient.startDate}
-                            onChange={e => setNewClient({...newClient, startDate: e.target.value})}
-                        />
-                    </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Email</label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-3 top-3.5 text-gray-300" />
+                  <input required type="email" placeholder="client@email.com" className="w-full border-2 border-gray-50 p-3 pl-10 rounded-xl outline-none focus:border-sage transition-all text-sm font-bold" value={newClient.email} onChange={e => setNewClient({ ...newClient, email: e.target.value })} />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Montant payé (DH)</label>
-                    <input 
-                      type="number" 
-                      className="w-full border p-2 rounded mt-1" 
-                      placeholder="0"
-                      value={newClient.amountPaid}
-                      onChange={e => setNewClient({...newClient, amountPaid: e.target.value})} 
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Méthode</label>
-                    <select 
-                      className="w-full border p-2 rounded bg-white mt-1"
-                      value={newClient.paymentMethod}
-                      onChange={e => setNewClient({...newClient, paymentMethod: e.target.value})}
-                    >
-                      <option value="CASH">Espèces</option>
-                      <option value="CHEQUE">Chèque</option>
-                      <option value="VIREMENT">Virement</option>
-                    </select>
-                  </div>
-                </div>
-
-                {(newClient.paymentMethod === 'CHEQUE' || newClient.paymentMethod === 'VIREMENT') && (
-                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase">Référence (N° Chèque/Virement)</label>
-                    <input type="text" className="w-full border p-2 rounded mt-1" value={newClient.paymentRef} onChange={e => setNewClient({...newClient, paymentRef: e.target.value})} />
-                  </div>
-                )}
               </div>
 
-              <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Annuler</button>
-                <button type="submit" className="px-6 py-2 bg-sage text-white rounded font-bold hover:bg-green-700">Créer le client</button>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Téléphone</label>
+                <div className="relative">
+                  <Phone size={16} className="absolute left-3 top-3.5 text-gray-300" />
+                  <input required placeholder="06..." className="w-full border-2 border-gray-50 p-3 pl-10 rounded-xl outline-none focus:border-sage transition-all text-sm font-bold" value={newClient.telephone} onChange={e => setNewClient({ ...newClient, telephone: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="pt-6 flex flex-col gap-3">
+                <button type="submit" className="w-full py-4 bg-sage text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-sage/20 hover:scale-[1.02] active:scale-95 transition-all">
+                  Créer et passer à la vente
+                </button>
+                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="w-full py-3 text-gray-400 font-bold uppercase text-[10px] tracking-widest hover:text-gray-600 transition-colors">
+                  Annuler
+                </button>
               </div>
             </form>
+
+            <button onClick={() => setIsCreateModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><XCircle size={24} /></button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* --- MODAL DÉTAIL --- */}
-      {isDetailModalOpen && selectedClientId && (
-        <ClientDetailModal 
-          clientId={selectedClientId} 
-          onClose={() => {
-            setIsDetailModalOpen(false);
-            setSelectedClientId(null);
-            fetchData(); 
-          }} 
-        />
-      )}
+// --- SOUS-COMPOSANT CLIENT CARD ---
+function ClientCard({ client, onClick, onQuickSell }: { client: Client, onClick: () => void, onQuickSell: (e: any) => void }) {
+  const currentSub = client.subscriptions?.find(s => s.status === 'ACTIVE') || client.subscriptions?.[0];
+
+  const getPhotoDisplay = () => {
+    if (!client.photoUrl) return null;
+    if (client.photoUrl.startsWith('data:image')) return client.photoUrl;
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    return `${backendUrl}${client.photoUrl}`;
+  };
+  const photo = getPhotoDisplay();
+
+  return (
+    <div onClick={onClick} className="bg-white p-5 rounded-[2rem] shadow-sm border-2 border-gray-50 hover:border-sage hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden">
+      <div className="flex items-center gap-4 relative z-10">
+        <div className="w-16 h-16 rounded-2xl bg-sage/10 text-sage flex items-center justify-center overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-300">
+          {photo ? (
+            <img src={photo} alt={`${client.prenom}`} className="w-full h-full object-cover" />
+          ) : (
+            <CircleUserRound size={32} strokeWidth={1.5} />
+          )}
+        </div>
+        <div>
+          <h3 className="font-bold text-lg text-gray-800 group-hover:text-sage transition-colors leading-tight">{client.prenom} {client.nom}</h3>
+          <p className="text-xs text-gray-400 font-medium mt-1">{client.telephone || client.email}</p>
+        </div>
+      </div>
+
+      <div className="mt-6 pt-5 border-t border-gray-50 flex justify-between items-end relative z-10">
+        {currentSub ? (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${currentSub.status === 'ACTIVE' ? 'bg-green-500 animate-pulse' : 'bg-orange-400'}`}></span>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                {currentSub.status === 'ACTIVE' ? 'Actif' : 'Expiré'}
+              </span>
+            </div>
+            <p className="font-bold text-gray-700 text-xs truncate max-w-[140px]">{currentSub.type}</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <span className="w-2 h-2 rounded-full bg-gray-300"></span>
+            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-wider">Aucun forfait</p>
+          </div>
+        )}
+
+        <button
+          onClick={onQuickSell}
+          className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-sage hover:text-white transition-all shadow-sm group/btn"
+          title="Vendre un abonnement"
+        >
+          <CreditCard size={18} className="group-hover/btn:scale-110 transition-transform" />
+        </button>
+      </div>
     </div>
   );
 }

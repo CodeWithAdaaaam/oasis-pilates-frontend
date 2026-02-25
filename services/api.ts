@@ -1,23 +1,30 @@
+// frontend/services/api.ts
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
 const api = axios.create({
-  baseURL: '/api-backend', 
+  // CORRECTION : On pointe vers le chemin /api relatif au domaine principal.
+  // Exemple : une requête vers '/users/me' ira sur 'mon-site.railway.app/api/users/me'
+  baseURL: '/api', 
+  
+  // Cette option reste cruciale pour l'envoi des cookies
   withCredentials: true, 
 });
 
-// --- ON A SUPPRIMÉ TOUTE LA LOGIQUE CSRF (fetchCsrfToken et l'intercepteur) ---
-// Le navigateur gère tout automatiquement avec les cookies et le header Origin.
-
-export const getImageUrl = (path?: string | null): string => {
-  if (!path) {
-    return '/images/placeholder.jpg';
-  }
-  if (path.startsWith('http')) {
+// Helper pour afficher les images (doit aussi être simplifié)
+export const getImageUrl = (path: string | null | undefined, name: string = "Coach") => {
+  // 1. Si on a une string Base64 valide (commence par data:image)
+  if (path && path.startsWith('data:image')) {
     return path;
   }
-  return `${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'}${path}`;
+
+  // 2. Si on a un chemin vers le dossier uploads (ancien système)
+  if (path && path.startsWith('/uploads')) {
+    return `http://localhost:5000${path}`;
+  }
+
+  // 3. Fallback : Avatar avec les initiales réelles du coach au lieu de "OS"
+  const formattedName = encodeURIComponent(name);
+  return `https://ui-avatars.com/api/?name=${formattedName}&background=5F7C73&color=fff&size=128`;
 };
 
 export default api;
