@@ -7,7 +7,15 @@ import { useAuth } from '@/context/AuthContext';
 import { LogOut, Menu, X, CalendarCheck, UserCircle, LayoutDashboard, Users, Badge,Loader2 } from 'lucide-react';
 
 // --- LIENS POUR LES ADMINS / RÉCEPTIONNISTES ---
-const adminNavLinks = [
+
+interface NavLink {
+  name: string;
+  href: string;
+  icon: string;
+  roles?: string[]; // Le "?" signifie que c'est optionnel
+}
+
+const adminNavLinks: NavLink[] = [
   { name: 'Tableau de bord', href: '/admin', icon: 'dashboard', roles: ['ADMIN', 'RECEPTIONIST'] },
   { name: 'Gestion Clients', href: '/admin/clients', icon: 'group', roles: ['ADMIN', 'RECEPTIONIST'] },
   { name: 'Planning & Cours', href: '/admin/courses', icon: 'calendar_month', roles: ['ADMIN', 'RECEPTIONIST'] },
@@ -16,8 +24,7 @@ const adminNavLinks = [
   { name: "Coaches", href: "/admin/team", icon: "badge", roles: ['ADMIN'] },
 ];
 
-// --- LIENS SPÉCIFIQUES POUR LES COACHS ---
-const coachNavLinks = [
+const coachNavLinks: NavLink[] = [
     { name: 'Mon Planning', href: '/dashboard/coach', icon: 'calendar_today' },
     { name: 'Ma Bio / Profil', href: '/dashboard/coach/profile', icon: 'person_outline' },
 ];
@@ -47,7 +54,7 @@ const SidebarContent = ({ user, pathname, onLinkClick }: any) => {
             <nav className="flex-1 space-y-2">
                 {links
                     // Pour l'admin, on filtre encore par sous-rôle (ex: admin vs réceptionniste)
-                    .filter(link => user?.role === 'COACH' || (link.roles && link.roles.includes(user.role)))
+                    .filter(link => user && (user.role === 'COACH' || !link.roles || link.roles.includes(user.role)))
                     .map((link) => {
                         const isActive = pathname === link.href;
                         return (
@@ -129,7 +136,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-sage text-cream flex items-center justify-center">
                     <span className="material-symbols-outlined text-sm">
-                         {user.role === 'COACH' ? 'fitness_center' : 'shield_person'}
+                        {(user.role as string) === 'COACH' ? 'fitness_center' : 'shield_person'}
                     </span>
                 </div>
                 <h2 className="font-serif font-bold text-lg text-sage">OASIS</h2>

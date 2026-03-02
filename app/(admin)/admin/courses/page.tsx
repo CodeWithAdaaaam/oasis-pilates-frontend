@@ -231,7 +231,7 @@ export default function AdminPlanningPage() {
                     session={sessionToView} 
                     onClose={() => setSessionToView(null)} 
                     onRefresh={fetchData} 
-                    onEdit={(s) => { setSessionToView(null); handleEditInit(s); }} 
+                    onEdit={(s: Schedule) => { setSessionToView(null); handleEditInit(s); }}
                 />
             )}
 
@@ -329,7 +329,7 @@ function ParticipantsModal({ session, onClose, onRefresh, onEdit }: any) {
                 <div className="space-y-3">
                     <h4 className="font-black text-[10px] text-gray-400 uppercase tracking-widest ml-1">Participants ({session.participants.length}/{session.schedule.capacity})</h4>
                     <div className="max-h-60 overflow-y-auto border-2 border-gray-50 rounded-[2rem] divide-y divide-gray-50 custom-scrollbar">
-                        {session.participants.length > 0 ? session.participants.map(p => (
+                        {session.participants.length > 0 ? session.participants.map((p: Participant) => (
                             <div key={p.id} className="p-4 flex justify-between items-center hover:bg-gray-50 group">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-sage/10 flex items-center justify-center text-sage font-black text-[10px]">{p.prenom[0]}{p.nom[0]}</div>
