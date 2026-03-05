@@ -17,7 +17,7 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const SITE_URL = "https://oasis-pilates-frontend.vercel.app";
+const SITE_URL = "https://oasis-pilates.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
