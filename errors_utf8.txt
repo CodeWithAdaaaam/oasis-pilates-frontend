@@ -1,0 +1,14 @@
+﻿app/contact/page.tsx(31,8): error TS17008: JSX element 'main' has no corresponding closing tag.
+app/contact/page.tsx(70,19): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/contact/page.tsx(72,21): error TS17002: Expected corresponding JSX closing tag for 'p'.
+app/contact/page.tsx(73,19): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/contact/page.tsx(81,19): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/contact/page.tsx(83,21): error TS17002: Expected corresponding JSX closing tag for 'p'.
+app/contact/page.tsx(84,19): error TS17002: Expected corresponding JSX closing tag for 'address'.
+app/contact/page.tsx(97,15): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/contact/page.tsx(116,11): error TS1005: ')' expected.
+app/contact/page.tsx(119,9): error TS1128: Declaration or statement expected.
+app/contact/page.tsx(122,22): error TS1109: Expression expected.
+app/contact/page.tsx(124,7): error TS1109: Expression expected.
+app/contact/page.tsx(126,5): error TS1128: Declaration or statement expected.
+app/contact/page.tsx(127,3): error TS1109: Expression expected.

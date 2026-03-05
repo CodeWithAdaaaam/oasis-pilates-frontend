@@ -2,14 +2,10 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // CORRECTION : On pointe vers le chemin /api relatif au domaine principal.
-  // Exemple : une requête vers '/users/me' ira sur 'mon-site.railway.app/api/users/me'
-  baseURL: '/api', 
-  
-  // Cette option reste cruciale pour l'envoi des cookies
-  withCredentials: true, 
+  // En développement, force l'URL du backend pour éviter le 404
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  withCredentials: true, // Très important pour les cookies JWT
 });
-
 // Helper pour afficher les images (doit aussi être simplifié)
 export const getImageUrl = (path: string | null | undefined, name: string = "Coach") => {
   // 1. Si on a une string Base64 valide (commence par data:image)
