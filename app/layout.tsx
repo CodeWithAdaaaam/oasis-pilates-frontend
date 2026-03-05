@@ -5,13 +5,13 @@ import { AuthProvider } from '@/context/AuthContext';
 import LocalBusinessSchema from '@/components/seo/LocalBusinessSchema';
 import "./globals.css";
 
-const montserrat = Montserrat({ 
+const montserrat = Montserrat({
   subsets: ["latin"],
   variable: "--font-montserrat",
   display: "swap",
 });
 
-const playfair = Playfair_Display({ 
+const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
   display: "swap",
@@ -115,7 +115,7 @@ export default function RootLayout({
       </body>
 
       {/* ✅ Google Analytics 4 — hors body pour les perfs */}
-      <GoogleAnalytics gaId="G-G7DLK17GT9" />
+      <GoogleAnalytics gaId="G-X1GKEPV1H8" />
     </html>
   );
 }
